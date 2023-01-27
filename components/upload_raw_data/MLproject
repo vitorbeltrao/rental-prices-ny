@@ -1,0 +1,20 @@
+name: upload_data
+conda_env: conda.yaml
+
+entry_points:
+  main:
+    parameters:
+      artifact_name:
+        description: A human-readable name for this artifact, which is how you can identify this artifact.
+        type: str
+      artifact_type:
+        description: The type of the artifact, which is used to organize and differentiate artifacts.
+        type: str
+      artifact_description:
+        description: Free text that offers a description of the artifact.
+        type: str
+      input_uri:
+        description: Reference denoted by a URI (HTTP, for example) to the artifact.
+        type: str
+
+    command: "python upload_raw_data.py {artifact_name} {artifact_type} {artifact_description} {input_uri}"

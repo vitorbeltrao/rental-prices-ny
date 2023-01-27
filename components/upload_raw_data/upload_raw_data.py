@@ -12,7 +12,6 @@ import wandb
 
 # basic logs config
 logging.basicConfig(
-    filename='rental-prices-ny/logs/logs_system_funcs.log',
     level=logging.INFO,
     filemode='w',
     format='%(asctime)-15s - %(name)s - %(levelname)s - %(message)s')
@@ -25,7 +24,7 @@ def upload_raw_data(args) -> None:
     '''
     # start a new run at wandb
     run = wandb.init(
-        project="rental-prices-ny", entity="vitorabdo", job_type='upload_file')
+        project="rental-prices-ny", entity="vitorabdo", job_type='upload_data')
     logger.info('Creating run for airbnb rental prices ny: SUCCESS')
 
     artifact = wandb.Artifact(
@@ -77,5 +76,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
     upload_raw_data(args)
     logging.info('Done executing the upload_raw_data function')
-
-
