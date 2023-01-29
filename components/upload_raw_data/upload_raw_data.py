@@ -9,6 +9,7 @@ in W&B extracted from the data source
 import logging
 import argparse
 import wandb
+import csv
 
 # basic logs config
 logging.basicConfig(
@@ -20,13 +21,13 @@ logger = logging.getLogger()
 # main function of this file
 
 
-def upload_raw_data(args) -> None:
+def upload_raw_data(args) -> csv:
     '''Function that upload an artifact, in this
     case a raw dataset for weights and biases
     '''
     # start a new run at wandb
     run = wandb.init(
-        project="rental-prices-ny", entity="vitorabdo", job_type='upload_data')
+        project='rental-prices-ny', entity='vitorabdo', job_type='upload_data')
     logger.info('Creating run for airbnb rental prices ny: SUCCESS')
 
     artifact = wandb.Artifact(
@@ -47,7 +48,7 @@ if __name__ == "__main__":
         description='Upload an artifact to W&B. Adds a reference denoted by a URI to the artifact.')
 
     parser.add_argument(
-        "--artifact_name",
+        '--artifact_name',
         type=str,
         help='A human-readable name for this artifact which is how you can identify this artifact.',
         required=True)
@@ -63,15 +64,13 @@ if __name__ == "__main__":
         type=str,
         help='Free text that offers a description of the artifact.',
         required=False,
-        default='Raw dataset used for the project, pulled directly from airbnb'
-    )
+        default='Raw dataset used for the project, pulled directly from airbnb')
 
     parser.add_argument(
         '--input_uri',
         type=str,
         help='Reference denoted by a URI (HTTP, for example) to the artifact.',
-        required=True
-    )
+        required=True)
 
     args = parser.parse_args()
     upload_raw_data(args)
