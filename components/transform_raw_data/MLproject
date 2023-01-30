@@ -1,0 +1,23 @@
+name: transform_data
+conda_env: conda.yaml
+
+entry_points:
+  main:
+    parameters:
+      input_artifact:
+        description: String referring to the W&B directory where the csv with the raw data to be transformed is located.
+        type: str
+      test_size:
+        description: Size of the test split. Fraction of the dataset, or number of items.
+        type: float
+      random_seed:
+        description: Seed for random number generator.
+        type: int
+      stratify_by:
+        description: Column to use for stratification.
+        type: str
+      artifact_description:
+        description: Free text that offers a description of the artifact.
+        type: str
+
+    command: "python transform_raw_data.py {input_artifact} {test_size} {stratify_by} {artifact_description}"

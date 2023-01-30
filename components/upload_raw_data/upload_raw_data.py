@@ -9,7 +9,6 @@ in W&B extracted from the data source
 import logging
 import argparse
 import wandb
-import csv
 
 # basic logs config
 logging.basicConfig(
@@ -18,10 +17,8 @@ logging.basicConfig(
     format='%(asctime)-15s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
 
-# main function of this file
 
-
-def upload_raw_data(args) -> csv:
+def upload_raw_data(args) -> None:
     '''Function that upload an artifact, in this
     case a raw dataset for weights and biases
     '''
