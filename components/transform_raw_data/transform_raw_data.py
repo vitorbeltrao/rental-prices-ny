@@ -2,9 +2,8 @@
 Author: Vitor Abdo
 
 This .py file serves to download the first artifact
-uploaded from the last step and does some initial
-transformations at the etl level only
-(not at the ML model level)
+uploaded from the last step and split the raw
+dataset into train and test set.
 '''
 
 # import necessary packages
@@ -24,10 +23,7 @@ logger = logging.getLogger()
 
 def transform_raw_data(args) -> None:
     '''Function that receives the raw data coming from the data source
-    and applies some necessary transformations (etl).
-
-    These transformations are just to get the data in the right shape
-    for us to start the data science pipeline.
+    and divide the raw data into train and test set.
     '''
     # start a new run at wandb
     run = wandb.init(
@@ -38,20 +34,14 @@ def transform_raw_data(args) -> None:
     filepath = artifact.file()
     logger.info('Downloaded raw data artifact: SUCCESS')
 
-    # transform downloaded dataset
-    df_raw = pd.read_csv(filepath, low_memory=False)
-    df_transformed = df_raw.drop(
-        ['license', 'id', 'name', 'host_id',
-         'host_name', 'last_review'], axis=1)
-    logger.info('Transformed raw data: SUCCESS')
-
     # divide the dataset into train and test
+    df_raw = pd.read_csv(filepath, low_memory=False)
     train_set, test_set = train_test_split(
-        df_transformed,
+        df_raw,
         test_size=args.test_size,
         random_state=args.random_seed,
-        stratify=df_transformed[args.stratify_by] if args.stratify_by != 'none' else None)
-    logger.info('Splitted transformed data into train and test: SUCCESS')
+        stratify=df_raw[args.stratify_by] if args.stratify_by != 'none' else None)
+    logger.info('Splitted raw data into train and test: SUCCESS')
 
     # upload to W&B
     for df, name in zip([train_set, test_set], ['train_set', 'test_set']):
