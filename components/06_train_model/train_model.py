@@ -46,3 +46,56 @@ logging.basicConfig(
     filemode='w',
     format='%(asctime)-15s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
+
+def get_inference_pipeline(rf_config):
+    '''function that creates the entire inference pipeline'''
+    # preprocessing step
+    # categorical values
+    ordinal_categorical = ['room_type']
+    non_ordinal_categorical = ['neighbourhood_group']
+
+    # numerical values
+    zero_imputed = [
+        'minimum_nights',
+        'number_of_reviews',
+        'reviews_per_month',
+        'calculated_host_listings_count',
+        'availability_365']
+
+    # categorical preprocessing
+    ordinal_categorical_preproc = ce.OrdinalEncoder(
+        cols = ordinal_categorical, 
+        mapping = [
+            {'col':'room_type',
+            'mapping':{'Shared room':0,
+                        'Private room':1,
+                        'Entire home/apt':2,
+                        'Hotel room':3}}])
+        
+    non_ordinal_categorical_preproc = make_pipeline(
+            SimpleImputer(strategy='most_frequent'),
+            OneHotEncoder(drop='first'))
+
+    # numerical preprocessing
+    zero_imputer = SimpleImputer(strategy='constant', fill_value=0)
+
+    # apply the respective transformations with columntransformer method
+    preprocessor = ColumnTransformer([
+        ('ordinal_cat', ordinal_categorical_preproc, ordinal_categorical),
+        ('non_ordinal_cat', non_ordinal_categorical_preproc, non_ordinal_categorical),
+        ('impute_zero', zero_imputer, zero_imputed)],
+        remainder='drop')
+    
+    processed_features = ordinal_categorical + non_ordinal_categorical + zero_imputed
+
+    # instantiate the final model
+    final_model = Pipeline(
+        steps=[
+            ('preprocessor', preprocessor), 
+            ('scaling', StandardScaler()), 
+            ('rf', RandomForestRegressor(**rf_config))
+        ]
+    )
+    return final_model, processed_features
+
+
