@@ -1,4 +1,8 @@
 '''
+Author: Vitor Abdo
+
+This is the main system file that runs all the necessary 
+components to run the machine learning pipeline
 '''
 
 # import necessary packages
@@ -18,7 +22,10 @@ _steps = [
 # This automatically reads in the configuration
 @hydra.main(config_name='config')
 def go(config: DictConfig):
-    '''
+    '''main file that runs the entire pipeline end-to-end using hydra and mlflow
+
+    :param config: (.yaml file) 
+    file that contains all the default data for the entire machine learning pipeline to run
     '''
     # Setup the wandb experiment. All runs will be grouped under this name
     os.environ['WANDB_PROJECT'] = config['main']['project_name']
