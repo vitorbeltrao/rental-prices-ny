@@ -1,0 +1,29 @@
+main:
+  components_repository: "https://github.com/vitorbeltrao/rental-prices-ny#components"
+  project_name: rental-prices-ny
+  experiment_name: development
+  steps: all
+
+01_upload_raw_data:
+  input_uri: "http://data.insideairbnb.com/united-states/ny/new-york-city/2022-12-04/visualisations/listings.csv"
+
+02_transform_raw_data:
+  input_artifact: "vitorabdo/rental-prices-ny/raw_data:latest"
+  test_size: 0.2
+  random_seed: 42
+  stratify_by: 'none'
+
+04_basic_clean:
+  input_artifact: "vitorabdo/rental-prices-ny/train_set:latest"
+  min_price: 10
+  max_price: 5944
+  min_nights: 1
+  max_nights: 370
+
+05_data_check:
+  csv: "vitorabdo/rental-prices-ny/clean_data:latest"
+  ref: "vitorabdo/rental-prices-ny/clean_data:latest"
+  kl_threshold: 0.2
+  min_price: 10
+  max_price: 5944 
+
