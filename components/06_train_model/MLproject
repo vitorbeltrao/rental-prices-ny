@@ -1,0 +1,26 @@
+name: train_data
+conda_env: conda.yaml
+
+entry_points:
+  main:
+    parameters:
+      input_artifact:
+        description: String referring to the W&B directory where the csv with the cleaned dataset to be trained is located.
+        type: str
+      rf_config:
+        description: Path to a YAML file containing the configuration for the random forest.
+        type: str
+      cv:
+        description: The number of folds to apply in cross-validation.
+        type: int
+      artifact_name:
+        description: A human-readable name for this artifact which is how you can identify this artifact.
+        type: str
+      artifact_type:
+        description: The type of the artifact, which is used to organize and differentiate artifacts.
+        type: str
+      artifact_description:
+        description: Free text that offers a description of the artifact.
+        type: str
+    
+    command: "python train_model.py {input_artifact} {rf_config} {cv} {artifact_name} {artifact_type} {artifact_description}"
