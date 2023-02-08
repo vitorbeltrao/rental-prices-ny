@@ -14,6 +14,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import mlflow
+import os
+import shutil
+import tempfile
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
@@ -88,7 +91,7 @@ def feature_importance_plot(pipe: Pipeline, feat_names: list) -> plt.figure:
     most important variables for the model
     '''
     # we collect the feature importance for all non-nlp features first
-    feat_imp = pipe['random_forest'].feature_importances_[: len(feat_names)-1]
+    feat_imp = pipe['rf'].feature_importances_[: len(feat_names)-1]
 
     # plot
     fig_feat_imp, sub_feat_imp = plt.subplots(figsize=(10, 10))
@@ -112,12 +115,17 @@ def train_model(args):
     logger.info('Downloaded cleaned data artifact: SUCCESS')
 
     # Get the Random Forest configuration and update W&B
-    with open(args.rf_config) as fp:
-        rf_config = json.load(fp)
-    run.config.update(rf_config)
+    try:
+        with open(args.rf_config) as fp:
+            rf_config = json.load(fp)
+        run.config.update(rf_config)
+        rf_config['random_state'] = args.random_seed
+    except:
+        rf_config = {}
+        rf_config['random_state'] = args.random_seed
 
     # select only the features that we are going to use
-    df_clean = pd.read_csv(filepath)
+    df_clean = pd.read_csv(filepath, low_memory=False)
     X = df_clean.drop(['price'], axis=1)
     y = df_clean['price']
     logger.info(f"Minimum price: {y.min()}, Maximum price: {y.max()}")
@@ -145,10 +153,13 @@ def train_model(args):
 
     # exporting the model: save model package in the MLFlow sklearn format
     logger.info('Exporting model')
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        export_path = os.path.join(temp_dir, 'model_export')
     
     mlflow.sklearn.save_model(
             sk_pipe,
-            '06_train_model',
+            export_path,
             serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE)
     
     # upload the model artifact into wandb
@@ -157,8 +168,9 @@ def train_model(args):
         type=args.artifact_type,
         description=args.artifact_description)
     
-    artifact.add_file('final_model_pipe.pkl')
+    artifact.add_dir(export_path)
     run.log_artifact(artifact)
+    artifact.wait()
     logger.info('Artifact Uploaded: SUCCESS')
 
     # Plot feature importance
@@ -190,10 +202,17 @@ if __name__ == "__main__":
         required=True)
     
     parser.add_argument(
+        '--random_seed',
+        type=int,
+        help='Seed for random number generator.',
+        required=False,
+        default=42)
+    
+    parser.add_argument(
         '--rf_config',
         type=str,
-        help='Path to a YAML file containing the configuration for the random forest.',
-        required=True)
+        help='Random forest configuration. A JSON dict that will be passed to the scikit-learn constructor for RandomForestRegressor.',
+        default='{}')
     
     parser.add_argument(
         '--cv',

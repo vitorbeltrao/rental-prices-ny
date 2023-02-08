@@ -27,3 +27,10 @@ main:
   min_price: 10
   max_price: 5944 
 
+06_train_model:
+  input_artifact: "vitorabdo/rental-prices-ny/clean_data:latest"
+  random_seed: 42
+  cv: 5
+  random_forest:
+    n_estimators: 50
+    max_depth: 10

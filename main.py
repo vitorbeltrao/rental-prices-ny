@@ -11,13 +11,15 @@ import tempfile
 import os
 import wandb
 import hydra
+import json
 from omegaconf import DictConfig
 
 _steps = [
     'upload_raw_data',
     'transform_raw_data',
     'basic_clean',
-    'data_check']
+    'data_check',
+    'train_model']
 
 # This automatically reads in the configuration
 @hydra.main(config_name='config')
@@ -95,3 +97,25 @@ def go(config: DictConfig):
                     'max_price': config['05_data_check']['max_price']
                 },
             )
+
+        if 'train_model' in active_steps:
+             rf_config = os.path.abspath('rf_config.json')
+             with open(rf_config, 'w+') as fp:
+                 json.dump(dict(config['06_train_model']['random_forest'].items()), fp)
+                 
+             _ = mlflow.run(
+                 f"{config['main']['components_repository']}/06_train_model",
+                 'main',
+                 version='main',
+                 parameters={
+                    'input_artifact': config['06_train_model']['input_artifact'],
+                    'random_seed': config['06_train_model']['random_seed'],
+                    'rf_config': rf_config,
+                    'cv': config['06_train_model']['cv'],
+                    'artifact_name': 'final_model_pipe',
+                    'artifact_type': 'pickle',
+                    'artifact_description': 'Final model pipeline after training, exported in the correct format for making inferences'
+                },
+            )
+        
+
