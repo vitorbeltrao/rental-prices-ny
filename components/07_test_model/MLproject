@@ -1,0 +1,17 @@
+name: test_model
+conda_env: conda.yaml
+
+entry_points:
+  main:
+    parameters:
+      mlflow_model:
+        description: String referring to the W&B directory where the mlflow production model is located.
+        type: str
+      test_data:
+        description: String referring to the W&B directory where the csv with the test dataset to be tested is located.
+        type: int
+      confidence_level:
+        description: Level of confidence you want in your RMSE assessment results.
+        type: float
+    
+    command: "python test_model.py {mlflow_model} {test_data} {confidence_level}"

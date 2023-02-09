@@ -136,7 +136,8 @@ def train_model(args):
 
     logger.info('Fitting...')
     scores = cross_validate(sk_pipe, X, y, return_train_score=True,
-                            scoring=('r2', 'neg_mean_squared_error'), cv=args.cv)
+                            scoring=('r2', 'neg_mean_squared_error'), 
+                            cv=args.cv, return_estimator=True)
 
     # compute r2 and RMSE
     logger.info('Scoring...')
@@ -147,9 +148,9 @@ def train_model(args):
     test_rmse_scores = np.mean(np.sqrt(-scores['test_neg_mean_squared_error']))
 
     logger.info(f"Train_r2: {train_r2_scores}")
-    logger.info(f"Test_r2: {test_r2_scores}")
+    logger.info(f"Val_r2: {test_r2_scores}")
     logger.info(f"Train_rmse: {train_rmse_scores}")
-    logger.info(f"Test_rmse: {test_rmse_scores}")
+    logger.info(f"Val_rmse: {test_rmse_scores}")
 
     # exporting the model: save model package in the MLFlow sklearn format
     logger.info('Exporting model')
@@ -174,13 +175,13 @@ def train_model(args):
     logger.info('Artifact Uploaded: SUCCESS')
 
     # Plot feature importance
-    fig_feat_imp = feature_importance_plot(sk_pipe, processed_features)
+    fig_feat_imp = feature_importance_plot(scores['estimator'], processed_features)
 
     # lets save and upload all metrics to wandb
     run.summary['Train_r2'] = train_r2_scores
-    run.summary['Test_r2'] = test_r2_scores
+    run.summary['Val_r2'] = test_r2_scores
     run.summary['Train_rmse'] = train_rmse_scores
-    run.summary['Test_rmse'] = test_rmse_scores
+    run.summary['Val_rmse'] = test_rmse_scores
 
     run.log(
         {
