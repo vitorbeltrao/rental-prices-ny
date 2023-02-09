@@ -29,8 +29,13 @@ main:
 
 06_train_model:
   input_artifact: "vitorabdo/rental-prices-ny/clean_data:latest"
-  random_seed: 42
   cv: 5
+  scoring: 'r2'
   random_forest:
     n_estimators: 50
     max_depth: 10
+
+07_test_model:
+  mlflow_model: "vitorabdo/rental-prices-ny/final_model_pipe:prod"
+  test_data: "vitorabdo/rental-prices-ny/test_set:latest"
+  confidence_level: 0.95

@@ -1,7 +1,7 @@
 '''
 Author: Vitor Abdo
 
-This is the main system file that runs all the necessary 
+This is the main system file that runs all the necessary
 components to run the machine learning pipeline
 '''
 
@@ -19,14 +19,17 @@ _steps = [
     'transform_raw_data',
     'basic_clean',
     'data_check',
-    'train_model']
+    'train_model',
+    'test_model']
 
 # This automatically reads in the configuration
-@hydra.main(config_name='config')
+
+
+@hydra.main(config_name="config")
 def go(config: DictConfig):
     '''main file that runs the entire pipeline end-to-end using hydra and mlflow
 
-    :param config: (.yaml file) 
+    :param config: (.yaml file)
     file that contains all the default data for the entire machine learning pipeline to run
     '''
     # Setup the wandb experiment. All runs will be grouped under this name
@@ -49,8 +52,7 @@ def go(config: DictConfig):
                     'artifact_name': 'raw_data',
                     'artifact_type': 'dataset',
                     'artifact_description': 'Raw dataset used for the project, pulled directly from airbnb',
-                    'input_uri': config['01_upload_raw_data']['input_uri']
-                },
+                    'input_uri': config['01_upload_raw_data']['input_uri']},
             )
 
         if 'transform_raw_data' in active_steps:
@@ -80,8 +82,7 @@ def go(config: DictConfig):
                     'min_price': config['04_basic_clean']['min_price'],
                     'max_price': config['04_basic_clean']['max_price'],
                     'min_nights': config['04_basic_clean']['min_nights'],
-                    'max_nights': config['04_basic_clean']['max_nights']
-                },
+                    'max_nights': config['04_basic_clean']['max_nights']},
             )
 
         if 'data_check' in active_steps:
@@ -99,23 +100,39 @@ def go(config: DictConfig):
             )
 
         if 'train_model' in active_steps:
-             rf_config = os.path.abspath('rf_config.json')
-             with open(rf_config, 'w+') as fp:
-                 json.dump(dict(config['06_train_model']['random_forest'].items()), fp)
-                 
-             _ = mlflow.run(
-                 f"{config['main']['components_repository']}/06_train_model",
-                 'main',
-                 version='main',
-                 parameters={
+            rf_config = os.path.abspath('rf_config.json')
+            with open(rf_config, 'w+') as fp:
+                json.dump(
+                    dict(
+                        config['06_train_model']['random_forest'].items()),
+                    fp)
+
+            _ = mlflow.run(
+                f"{config['main']['components_repository']}/06_train_model",
+                'main',
+                version='main',
+                parameters={
                     'input_artifact': config['06_train_model']['input_artifact'],
-                    'random_seed': config['06_train_model']['random_seed'],
                     'rf_config': rf_config,
                     'cv': config['06_train_model']['cv'],
+                    'scoring': config['06_train_model']['scoring'],
                     'artifact_name': 'final_model_pipe',
                     'artifact_type': 'pickle',
                     'artifact_description': 'Final model pipeline after training, exported in the correct format for making inferences'
                 },
             )
-        
 
+        if 'test_model' in active_steps:
+            _ = mlflow.run(
+                f"{config['main']['components_repository']}/07_test_model",
+                'main',
+                version='main',
+                parameters={
+                    'mlflow_model': config['07_test_model']['mlflow_model'],
+                    'test_data': config['07_test_model']['test_data'],
+                    'confidence_level': config['07_test_model']['confidence_level']},
+            )
+
+
+if __name__ == "__main__":
+    go()
