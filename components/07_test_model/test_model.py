@@ -22,6 +22,7 @@ logging.basicConfig(
     format='%(asctime)-15s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
 
+
 def test_model(args):
     '''Function to test the model listed for production on the test dataset'''
     # start a new run at wandb
@@ -29,9 +30,10 @@ def test_model(args):
         project='rental-prices-ny',
         entity='vitorabdo',
         job_type='test_model')
-    
+
     # download mlflow model
-    model_local_path = run.use_artifact(args.mlflow_model, type='pickle').download()
+    model_local_path = run.use_artifact(
+        args.mlflow_model, type='pickle').download()
     logger.info('Downloaded prod mlflow model: SUCCESS')
 
     # download test dataset
@@ -56,10 +58,13 @@ def test_model(args):
     # confidence interval for the generalization error
     confidence = args.confidence_level
     squared_errors = (y_pred - y_test) ** 2
-    confidence_interval = np.sqrt(stats.t.interval(confidence, len(squared_errors) - 1,
-                                                   loc = squared_errors.mean(),
-                                                   scale = stats.sem(squared_errors)))
-    
+    confidence_interval = np.sqrt(
+        stats.t.interval(
+            confidence,
+            len(squared_errors) - 1,
+            loc=squared_errors.mean(),
+            scale=stats.sem(squared_errors)))
+
     logger.info(f"Test_r2: {r_squared}")
     logger.info(f"Test_rmse: {rmse}")
     logger.info(f"Test_confidence_interval: {confidence_interval}")
@@ -75,26 +80,26 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description='Test the provided model against the test dataset.')
-    
+
     parser.add_argument(
         '--mlflow_model',
         type=str,
         help='String referring to the W&B directory where the mlflow production model is located.',
         required=True)
-    
+
     parser.add_argument(
         '--test_data',
         type=str,
         help='String referring to the W&B directory where the csv with the test dataset to be tested is located.',
         required=True)
-    
+
     parser.add_argument(
         '--confidence_level',
         type=float,
         help='Level of confidence you want in your RMSE assessment results.',
         required=False,
         default=0.95)
-    
+
     args = parser.parse_args()
     test_model(args)
     logging.info('Done executing the test_model function')
