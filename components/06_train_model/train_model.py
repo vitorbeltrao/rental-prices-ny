@@ -15,14 +15,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import mlflow
 import os
-import shutil
 import tempfile
+import math
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.pipeline import Pipeline, make_pipeline
-from sklearn.model_selection import cross_validate
+from sklearn.model_selection import GridSearchCV
 from sklearn.compose import ColumnTransformer
 import category_encoders as ce
 from sklearn.impute import SimpleImputer
@@ -34,7 +34,8 @@ logging.basicConfig(
     format='%(asctime)-15s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
 
-def get_inference_pipeline(rf_config):
+
+def get_inference_pipeline() -> Pipeline:
     '''function that creates the entire inference pipeline'''
     # preprocessing step
     # categorical values
@@ -51,17 +52,17 @@ def get_inference_pipeline(rf_config):
 
     # categorical preprocessing
     ordinal_categorical_preproc = ce.OrdinalEncoder(
-        cols = ordinal_categorical, 
-        mapping = [
-            {'col':'room_type',
-            'mapping':{'Shared room':0,
-                        'Private room':1,
-                        'Entire home/apt':2,
-                        'Hotel room':3}}])
-        
+        cols=ordinal_categorical,
+        mapping=[
+            {'col': 'room_type',
+             'mapping': {'Shared room': 0,
+                         'Private room': 1,
+                         'Entire home/apt': 2,
+                         'Hotel room': 3}}])
+
     non_ordinal_categorical_preproc = make_pipeline(
-            SimpleImputer(strategy='most_frequent'),
-            OneHotEncoder(drop='first'))
+        SimpleImputer(strategy='most_frequent'),
+        OneHotEncoder(drop='first'))
 
     # numerical preprocessing
     zero_imputer = SimpleImputer(strategy='constant', fill_value=0)
@@ -72,34 +73,51 @@ def get_inference_pipeline(rf_config):
         ('non_ordinal_cat', non_ordinal_categorical_preproc, non_ordinal_categorical),
         ('impute_zero', zero_imputer, zero_imputed)],
         remainder='drop')
-    
-    processed_features = ordinal_categorical + non_ordinal_categorical + zero_imputed
-    
+
+    processed_features = ordinal_categorical + \
+        non_ordinal_categorical + zero_imputed + ["last_review", "name"]
+
     # instantiate the final model
     final_model = Pipeline(
         steps=[
-            ('preprocessor', preprocessor), 
-            ('scaling', StandardScaler()), 
-            ('rf', RandomForestRegressor(**rf_config))
+            ('preprocessor', preprocessor),
+            ('scaling', StandardScaler()),
+            ('rf', RandomForestRegressor(random_state=42))
         ]
     )
     return final_model, processed_features
 
 
-def feature_importance_plot(pipe: Pipeline, feat_names: list) -> plt.figure:
+def plot_feature_importance(pipe, feat_names) -> plt.figure:
     '''Function to generate the graph of the
     most important variables for the model
-    '''
-    # we collect the feature importance for all non-nlp features first
-    feat_imp = pipe['rf'].feature_importances_[: len(feat_names)-1]
 
-    # plot
+    :param model: (Pipeline)
+    The pipeline that made the final model
+
+    :param feat_names: (list)
+    List with the name of the variables used in your model
+
+    :return: (figure)
+    Returns the figure with the graph of the most
+    important variables for the model
+    '''
+    # We collect the feature importance for all non-nlp features first
+    feat_imp = pipe["rf"].feature_importances_[: len(feat_names)]
+
+    # plot the figure
     fig_feat_imp, sub_feat_imp = plt.subplots(figsize=(10, 10))
-    sub_feat_imp.bar(range(feat_imp.shape[0]), feat_imp, color='r', align='center')
+    sub_feat_imp.bar(
+        range(
+            feat_imp.shape[0]),
+        feat_imp,
+        color="r",
+        align="center")
     _ = sub_feat_imp.set_xticks(range(feat_imp.shape[0]))
     _ = sub_feat_imp.set_xticklabels(np.array(feat_names), rotation=90)
     fig_feat_imp.tight_layout()
     return fig_feat_imp
+
 
 def train_model(args):
     '''Function to train the model, tune the hyperparameters
@@ -119,10 +137,8 @@ def train_model(args):
         with open(args.rf_config) as fp:
             rf_config = json.load(fp)
         run.config.update(rf_config)
-        rf_config['random_state'] = args.random_seed
-    except:
+    except BaseException:
         rf_config = {}
-        rf_config['random_state'] = args.random_seed
 
     # select only the features that we are going to use
     df_clean = pd.read_csv(filepath, low_memory=False)
@@ -132,60 +148,68 @@ def train_model(args):
 
     # training the model
     logger.info('Preparing sklearn pipeline')
-    sk_pipe, processed_features = get_inference_pipeline(rf_config)
+    sk_pipe, processed_features = get_inference_pipeline()
 
+    # hyperparameter interval to be trained and tested
     logger.info('Fitting...')
-    scores = cross_validate(sk_pipe, X, y, return_train_score=True,
-                            scoring=('r2', 'neg_mean_squared_error'), 
-                            cv=args.cv, return_estimator=True)
+    param_grid = rf_config
 
-    # compute r2 and RMSE
+    grid_search = GridSearchCV(
+        sk_pipe,
+        param_grid,
+        cv=args.cv,
+        scoring=args.scoring,
+        return_train_score=True)
+    grid_search.fit(X, y)
+
+    # instantiate best model
+    final_model = grid_search.best_estimator_
+
+    # scoring
     logger.info('Scoring...')
-    train_r2_scores = np.mean(scores['train_r2'])
-    test_r2_scores = np.mean(scores['test_r2'])
+    cvres = grid_search.cv_results_
 
-    train_rmse_scores = np.mean(np.sqrt(-scores['train_neg_mean_squared_error']))
-    test_rmse_scores = np.mean(np.sqrt(-scores['test_neg_mean_squared_error']))
+    cvres = [(mean_test_score,
+              mean_train_score) for mean_test_score,
+             mean_train_score in sorted(zip(cvres['mean_test_score'],
+                                            cvres['mean_train_score']),
+                                        reverse=True) if (math.isnan(mean_test_score) != True)]
 
-    logger.info(f"Train_r2: {train_r2_scores}")
-    logger.info(f"Val_r2: {test_r2_scores}")
-    logger.info(f"Train_rmse: {train_rmse_scores}")
-    logger.info(f"Val_rmse: {test_rmse_scores}")
+    logger.info(
+        f"The mean val score and mean train score of {args.scoring} is, respectively: {cvres[0]}")
 
     # exporting the model: save model package in the MLFlow sklearn format
     logger.info('Exporting model')
 
     with tempfile.TemporaryDirectory() as temp_dir:
         export_path = os.path.join(temp_dir, 'model_export')
-    
+
     mlflow.sklearn.save_model(
-            sk_pipe,
-            export_path,
-            serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE)
-    
+        final_model,
+        export_path,
+        serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE)
+
     # upload the model artifact into wandb
     artifact = wandb.Artifact(
         name=args.artifact_name,
         type=args.artifact_type,
         description=args.artifact_description)
-    
+
     artifact.add_dir(export_path)
     run.log_artifact(artifact)
     artifact.wait()
     logger.info('Artifact Uploaded: SUCCESS')
 
     # Plot feature importance
-    fig_feat_imp = feature_importance_plot(scores['estimator'], processed_features)
+    fig_feat_imp = plot_feature_importance(final_model, processed_features)
 
     # lets save and upload all metrics to wandb
-    run.summary['Train_r2'] = train_r2_scores
-    run.summary['Val_r2'] = test_r2_scores
-    run.summary['Train_rmse'] = train_rmse_scores
-    run.summary['Val_rmse'] = test_rmse_scores
+    run.summary['Train_score'] = cvres[0][1]
+    run.summary['Val_score'] = cvres[0][0]
 
     run.log(
         {
-          'feature_importance': wandb.Image(fig_feat_imp)
+            'feature_importance': wandb.Image(fig_feat_imp)
         }
     )
 
@@ -201,26 +225,26 @@ if __name__ == "__main__":
         type=str,
         help='String referring to the W&B directory where the csv with the cleaned dataset to be trained is located.',
         required=True)
-    
-    parser.add_argument(
-        '--random_seed',
-        type=int,
-        help='Seed for random number generator.',
-        required=False,
-        default=42)
-    
+
     parser.add_argument(
         '--rf_config',
         type=str,
         help='Random forest configuration. A JSON dict that will be passed to the scikit-learn constructor for RandomForestRegressor.',
         default='{}')
-    
+
     parser.add_argument(
         '--cv',
         type=int,
         help='The number of folds to apply in cross-validation.',
         required=False,
         default=5)
+
+    parser.add_argument(
+        '--scoring',
+        type=str,
+        help='Which metric do you want to test.',
+        required=False,
+        default='r2')
 
     parser.add_argument(
         '--artifact_name',

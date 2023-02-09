@@ -7,15 +7,15 @@ entry_points:
       input_artifact:
         description: String referring to the W&B directory where the csv with the cleaned dataset to be trained is located.
         type: str
-      random_seed:
-        description: Seed for random number generator.
-        type: int
       rf_config:
         description: Random forest configuration. A JSON dict that will be passed to the scikit-learn constructor for RandomForestRegressor.
         type: str
       cv:
         description: The number of folds to apply in cross-validation.
         type: int
+      scoring:
+        description: Which metric do you want to test.
+        type: str
       artifact_name:
         description: A human-readable name for this artifact which is how you can identify this artifact.
         type: str
@@ -26,4 +26,4 @@ entry_points:
         description: Free text that offers a description of the artifact.
         type: str
     
-    command: "python train_model.py {input_artifact} {random_seed} {rf_config} {cv} {artifact_name} {artifact_type} {artifact_description}"
+    command: "python train_model.py {input_artifact} {rf_config} {cv} {scoring} {artifact_name} {artifact_type} {artifact_description}"
