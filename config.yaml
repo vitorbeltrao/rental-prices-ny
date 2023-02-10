@@ -2,7 +2,13 @@ main:
   components_repository: "https://github.com/vitorbeltrao/rental-prices-ny#components"
   project_name: rental-prices-ny
   experiment_name: development
-  steps: all
+  execute_steps:
+    - upload_raw_data
+    - transform_raw_data
+    - basic_clean
+    - data_check
+    - train_model
+    #-test_model
 
 01_upload_raw_data:
   input_uri: "http://data.insideairbnb.com/united-states/ny/new-york-city/2022-12-04/visualisations/listings.csv"

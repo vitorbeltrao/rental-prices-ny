@@ -6,24 +6,12 @@ components to run the machine learning pipeline
 '''
 
 # import necessary packages
+import os
+import json
+import hydra
 import mlflow
 import tempfile
-import os
-import wandb
-import hydra
-import json
-from omegaconf import DictConfig
-
-_steps = [
-    'upload_raw_data',
-    'transform_raw_data',
-    'basic_clean',
-    'data_check',
-    'train_model',
-    # 'test_model'
-]
-
-# This automatically reads in the configuration
+from omegaconf import DictConfig, OmegaConf
 
 
 @hydra.main(version_base=None, config_path=".", config_name="config")
@@ -37,30 +25,33 @@ def go(config: DictConfig):
     os.environ['WANDB_PROJECT'] = config['main']['project_name']
     os.environ['WANDB_RUN_GROUP'] = config['main']['experiment_name']
 
-    # Steps to execute
-    steps_par = config['main']['steps']
-    active_steps = steps_par.split(',') if steps_par != 'all' else _steps
+    # You can get the path at the root of the MLflow project with this:
+    root_path = hydra.utils.get_original_cwd()
+
+    steps_to_execute = config["main"]["execute_steps"]
+    if isinstance(config["main"]["execute_steps"], str):
+        # This was passed on the command line as a comma-separated list of steps
+        steps_to_execute = config["main"]["execute_steps"].split(",")
 
     # Move to a temporary directory
     with tempfile.TemporaryDirectory() as tmp_dir:
-        if 'upload_raw_data' in active_steps:
+        if 'upload_raw_data' in steps_to_execute:
             # Download file from source and load in W&B
             _ = mlflow.run(
-                f"{config['main']['components_repository']}/01_upload_raw_data",
-                'main',
-                version='main',
+                os.path.join(
+                root_path, "components", "01_upload_raw_data"), "main",
                 parameters={
                     'artifact_name': 'raw_data',
                     'artifact_type': 'dataset',
                     'artifact_description': 'Raw dataset used for the project, pulled directly from airbnb',
-                    'input_uri': config['01_upload_raw_data']['input_uri']},
+                    'input_uri': os.path.join(root_path, config["01_upload_raw_data"]["input_uri"])
+                },
             )
 
-        if 'transform_raw_data' in active_steps:
+        if 'transform_raw_data' in steps_to_execute:
             _ = mlflow.run(
-                f"{config['main']['components_repository']}/02_transform_raw_data",
-                'main',
-                version='main',
+                os.path.join(
+                root_path, "components", "02_transform_raw_data"), "main",
                 parameters={
                     'input_artifact': config['02_transform_raw_data']['input_artifact'],
                     'test_size': config['02_transform_raw_data']['test_size'],
@@ -70,11 +61,10 @@ def go(config: DictConfig):
                 },
             )
 
-        if 'basic_clean' in active_steps:
+        if 'basic_clean' in steps_to_execute:
             _ = mlflow.run(
-                f"{config['main']['components_repository']}/04_basic_clean",
-                'main',
-                version='main',
+                os.path.join(
+                root_path, "components", "04_basic_clean"), "main",
                 parameters={
                     'input_artifact': config['04_basic_clean']['input_artifact'],
                     'artifact_name': 'clean_data',
@@ -83,14 +73,14 @@ def go(config: DictConfig):
                     'min_price': config['04_basic_clean']['min_price'],
                     'max_price': config['04_basic_clean']['max_price'],
                     'min_nights': config['04_basic_clean']['min_nights'],
-                    'max_nights': config['04_basic_clean']['max_nights']},
+                    'max_nights': config['04_basic_clean']['max_nights']
+                },
             )
 
-        if 'data_check' in active_steps:
+        if 'data_check' in steps_to_execute:
             _ = mlflow.run(
-                f"{config['main']['components_repository']}/05_data_check",
-                'main',
-                version='main',
+                os.path.join(
+                root_path, "components", "05_data_check"), "main",
                 parameters={
                     'csv': config['05_data_check']['csv'],
                     'ref': config['05_data_check']['ref'],
@@ -100,18 +90,13 @@ def go(config: DictConfig):
                 },
             )
 
-        if 'train_model' in active_steps:
-            rf_config = os.path.abspath('rf_config.json')
-            with open(rf_config, 'w+') as fp:
-                json.dump(
-                    dict(
-                        config['06_train_model']['random_forest'].items()),
-                    fp)
+        if 'train_model' in steps_to_execute:
+            rf_config = os.path.abspath("rf_config.json")
+            with open(rf_config, "w+") as fp:
+                fp.write(OmegaConf.to_yaml(config["06_train_model"]))
 
             _ = mlflow.run(
-                f"{config['main']['components_repository']}/06_train_model",
-                'main',
-                version='main',
+                os.path.join(root_path, "components", "06_train_model"), "main",
                 parameters={
                     'input_artifact': config['06_train_model']['input_artifact'],
                     'rf_config': rf_config,
@@ -123,15 +108,15 @@ def go(config: DictConfig):
                 },
             )
 
-        if 'test_model' in active_steps:
+        if 'test_model' in steps_to_execute:
             _ = mlflow.run(
-                f"{config['main']['components_repository']}/07_test_model",
-                'main',
-                version='main',
+                os.path.join(
+                root_path, "components", "07_test_model"), "main",
                 parameters={
                     'mlflow_model': config['07_test_model']['mlflow_model'],
                     'test_data': config['07_test_model']['test_data'],
-                    'confidence_level': config['07_test_model']['confidence_level']},
+                    'confidence_level': config['07_test_model']['confidence_level']
+                },
             )
 
 
