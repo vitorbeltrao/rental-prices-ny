@@ -20,12 +20,13 @@ _steps = [
     'basic_clean',
     'data_check',
     'train_model',
-    'test_model']
+    # 'test_model'
+]
 
 # This automatically reads in the configuration
 
 
-@hydra.main(config_name="config")
+@hydra.main(version_base=None, config_path=".", config_name="config")
 def go(config: DictConfig):
     '''main file that runs the entire pipeline end-to-end using hydra and mlflow
 

@@ -11,7 +11,7 @@ main:
   input_artifact: "vitorabdo/rental-prices-ny/raw_data:latest"
   test_size: 0.2
   random_seed: 42
-  stratify_by: 'none'
+  stratify_by: "none"
 
 04_basic_clean:
   input_artifact: "vitorabdo/rental-prices-ny/train_set:latest"
@@ -30,7 +30,7 @@ main:
 06_train_model:
   input_artifact: "vitorabdo/rental-prices-ny/clean_data:latest"
   cv: 5
-  scoring: 'r2'
+  scoring: "r2"
   random_forest:
     n_estimators: 50
     max_depth: 10
