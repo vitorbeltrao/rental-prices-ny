@@ -1,4 +1,4 @@
-name: upload_data
+name: upload_raw_data
 conda_env: conda.yaml
 
 entry_points:

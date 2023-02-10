@@ -24,7 +24,7 @@ def upload_raw_data(args) -> None:
     '''
     # start a new run at wandb
     run = wandb.init(
-        project='rental-prices-ny', entity='vitorabdo', job_type='upload_data')
+        project='rental-prices-ny', entity='vitorabdo', job_type='upload_raw_data')
     logger.info('Creating run for airbnb rental prices ny: SUCCESS')
 
     artifact = wandb.Artifact(
