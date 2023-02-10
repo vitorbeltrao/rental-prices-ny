@@ -44,7 +44,7 @@ def go(config: DictConfig):
                     'artifact_name': 'raw_data',
                     'artifact_type': 'dataset',
                     'artifact_description': 'Raw dataset used for the project, pulled directly from airbnb',
-                    'input_uri': os.path.join(root_path, config["01_upload_raw_data"]["input_uri"])
+                    'input_uri': config['01_upload_raw_data']['input_uri']
                 },
             )
 

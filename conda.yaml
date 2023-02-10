@@ -10,3 +10,4 @@ dependencies:
   - pip:
       - wandb==0.13.9
       - protobuf==3.20.*
+      - hydra-joblib-launcher==1.1.2
