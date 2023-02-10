@@ -14,7 +14,7 @@ import tempfile
 from omegaconf import DictConfig, OmegaConf
 
 
-@hydra.main(version_base=None, config_path=".", config_name="config")
+@hydra.main(config_name="config")
 def go(config: DictConfig):
     '''main file that runs the entire pipeline end-to-end using hydra and mlflow
 
