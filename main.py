@@ -1,23 +1,32 @@
 '''
 Author: Vitor Abdo
-
 This is the main system file that runs all the necessary
 components to run the machine learning pipeline
 '''
 
 # import necessary packages
-import os
-import json
-import hydra
 import mlflow
 import tempfile
-from omegaconf import DictConfig, OmegaConf
+import os
+import hydra
+import json
+from omegaconf import DictConfig
+
+_steps = [
+    'upload_raw_data',
+    'transform_raw_data',
+    'basic_clean',
+    'data_check',
+    'train_model',
+    # 'test_model'
+]
+
+# This automatically reads in the configuration
 
 
-@hydra.main(config_name="config")
+@hydra.main(version_base=None, config_path=".", config_name="config")
 def go(config: DictConfig):
     '''main file that runs the entire pipeline end-to-end using hydra and mlflow
-
     :param config: (.yaml file)
     file that contains all the default data for the entire machine learning pipeline to run
     '''
@@ -25,21 +34,18 @@ def go(config: DictConfig):
     os.environ['WANDB_PROJECT'] = config['main']['project_name']
     os.environ['WANDB_RUN_GROUP'] = config['main']['experiment_name']
 
-    # You can get the path at the root of the MLflow project with this:
-    root_path = hydra.utils.get_original_cwd()
-
-    steps_to_execute = config["main"]["execute_steps"]
-    if isinstance(config["main"]["execute_steps"], str):
-        # This was passed on the command line as a comma-separated list of steps
-        steps_to_execute = config["main"]["execute_steps"].split(",")
+    # Steps to execute
+    steps_par = config['main']['steps']
+    active_steps = steps_par.split(',') if steps_par != 'all' else _steps
 
     # Move to a temporary directory
     with tempfile.TemporaryDirectory() as tmp_dir:
-        if 'upload_raw_data' in steps_to_execute:
+        if 'upload_raw_data' in active_steps:
             # Download file from source and load in W&B
             _ = mlflow.run(
-                os.path.join(
-                root_path, "components", "01_upload_raw_data"), "main",
+                f"{config['main']['components_repository']}/01_upload_raw_data",
+                'main',
+                version='main',
                 parameters={
                     'artifact_name': 'raw_data',
                     'artifact_type': 'dataset',
@@ -48,10 +54,11 @@ def go(config: DictConfig):
                 },
             )
 
-        if 'transform_raw_data' in steps_to_execute:
+        if 'transform_raw_data' in active_steps:
             _ = mlflow.run(
-                os.path.join(
-                root_path, "components", "02_transform_raw_data"), "main",
+                f"{config['main']['components_repository']}/02_transform_raw_data",
+                'main',
+                version='main',
                 parameters={
                     'input_artifact': config['02_transform_raw_data']['input_artifact'],
                     'test_size': config['02_transform_raw_data']['test_size'],
@@ -61,10 +68,11 @@ def go(config: DictConfig):
                 },
             )
 
-        if 'basic_clean' in steps_to_execute:
+        if 'basic_clean' in active_steps:
             _ = mlflow.run(
-                os.path.join(
-                root_path, "components", "04_basic_clean"), "main",
+                f"{config['main']['components_repository']}/04_basic_clean",
+                'main',
+                version='main',
                 parameters={
                     'input_artifact': config['04_basic_clean']['input_artifact'],
                     'artifact_name': 'clean_data',
@@ -77,10 +85,11 @@ def go(config: DictConfig):
                 },
             )
 
-        if 'data_check' in steps_to_execute:
+        if 'data_check' in active_steps:
             _ = mlflow.run(
-                os.path.join(
-                root_path, "components", "05_data_check"), "main",
+                f"{config['main']['components_repository']}/05_data_check",
+                'main',
+                version='main',
                 parameters={
                     'csv': config['05_data_check']['csv'],
                     'ref': config['05_data_check']['ref'],
@@ -90,13 +99,18 @@ def go(config: DictConfig):
                 },
             )
 
-        if 'train_model' in steps_to_execute:
-            rf_config = os.path.abspath("rf_config.json")
-            with open(rf_config, "w+") as fp:
-                fp.write(OmegaConf.to_yaml(config["06_train_model"]))
+        if 'train_model' in active_steps:
+            rf_config = os.path.abspath('rf_config.json')
+            with open(rf_config, 'w+') as fp:
+                json.dump(
+                    dict(
+                        config['06_train_model']['random_forest'].items()),
+                    fp)
 
             _ = mlflow.run(
-                os.path.join(root_path, "components", "06_train_model"), "main",
+                f"{config['main']['components_repository']}/06_train_model",
+                'main',
+                version='main',
                 parameters={
                     'input_artifact': config['06_train_model']['input_artifact'],
                     'rf_config': rf_config,
@@ -108,10 +122,11 @@ def go(config: DictConfig):
                 },
             )
 
-        if 'test_model' in steps_to_execute:
+        if 'test_model' in active_steps:
             _ = mlflow.run(
-                os.path.join(
-                root_path, "components", "07_test_model"), "main",
+                f"{config['main']['components_repository']}/07_test_model",
+                'main',
+                version='main',
                 parameters={
                     'mlflow_model': config['07_test_model']['mlflow_model'],
                     'test_data': config['07_test_model']['test_data'],
