@@ -139,4 +139,3 @@ wandb/
 artifacts/
 mlruns/
 outputs/
-images/

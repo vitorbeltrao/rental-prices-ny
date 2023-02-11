@@ -72,7 +72,7 @@ This will run the entire pipeline.
 
 If you want to run a certain steps you can use the examples of command bellow:
 
-`mlflow run . -P steps=download`
+`mlflow run . -P steps=upload_raw_data`
 
 This is useful for testing whether steps that have been added or developed can be performed or not.
 
