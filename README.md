@@ -96,7 +96,7 @@ We can directly use the existing pipeline to do the training process without the
 
 We have successfully run the pipeline, we can see that in the W&B account there is a new project with the name 'nyc_airbnb_dev'. Step running pipelines can be seen in the artifact section of Graph View.
 
-![wandb](rental-prices-ny\images\wandb.png)
+![wandb](https://github.com/vitorbeltrao/rental-prices-ny/blob/main/images/wandb.png?raw=true)
 
 ## Licensing and Author <a name="licensingandauthors"></a>
 
