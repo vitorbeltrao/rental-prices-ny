@@ -131,8 +131,12 @@ dmypy.json
 # data stuff
 /data
 *.csv
+rental-prices-ny/01_workflow_ETL.ipynb
+rental-prices-ny/03_workflow_clean_preprocessing.ipynb
+rental-prices-ny/04_workflow_ML.ipynb
 
 wandb/
 artifacts/
 mlruns/
 outputs/
+images/
